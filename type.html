@@ -1,37 +1,57 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
+<link lang="en">
+<link>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Typing Speed Tester</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="type.css">
 </head>
-<body>
-    <h1>TYPING SPEED TESTER</h1>
-    <p class="display" id="display"></p>
-  
-    <textarea id="typeHere" placeholder="Start typing here...."></textarea>
-    <div class="Controls">
-    <button id="Start">START</button>
-    <button id="Reset">RESET</button>
-    <button id="timerButton" onclick="StartTimer()">TIMER</button>
-    <button id="readButton">READ</button>
-    <button id="cancelRead">STOP READ</button>
-    <button id="toggleMode">DARK MODE</button>
-    </div>
-    <div class="Difficulties" id="Difficulties">
-        <button id="short">EASY</button>
-        <button id="medium">MEDIUM</button>
-        <button id="long">HARD</button>
-
-    </div>
-    
-    <p id="Result"></p>
-    <p id="timer"></p>
-    <p id="wpmCounter">Speed: 0 WPM</p>
-    <p id="highScore"></p>
-
-    <script src="type.js"></script>
+<body class="min-h-screen bg-gradient-to-b from-blue-50 to-indigo-100 p-4 transition-colors duration-300">
+    <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-6 my-8 transition-all duration-300">
+        <h1 class="text-3xl md:text-4xl font-bold text-center text-indigo-600 mb-6">TYPING SPEED TESTER</h1>
         
+        <p id="display" class="display bg-gray-100 rounded-lg p-4 mb-4 min-h-16 text-gray-800 font-medium"></p>
+      
+        <textarea id="typeHere" placeholder="Start typing here...." class="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none mb-4 transition-all duration-200 min-h-32 resize-y"></textarea>
+        
+        <div class="Controls flex flex-wrap gap-2 justify-center mb-4">
+            <button id="Start" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200">START</button>
+            <button id="Reset" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200">RESET</button>
+            <button id="timerButton" onclick="StartTimer()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200">TIMER</button>
+            <button id="readButton" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200">READ</button>
+            <button id="cancelRead" class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200">STOP READ</button>
+            <button id="toggleMode" class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200">DARK MODE</button>
+        </div>
+        
+        <div id="Difficulties" class="Difficulties flex flex-wrap gap-2 justify-center mb-6">
+            <button id="amateur" class="bg-green-100 hover:bg-green-200 text-green-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200">amateur</button>
+            <button id="easy" class="bg-blue-100 hover:bg-blue-200 text-blue-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200">easy</button>
+            <button id="medium" class="bg-yellow-100 hover:bg-yellow-200 text-yellow-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200">medium</button>
+            <button id="hard" class="bg-orange-100 hover:bg-orange-200 text-orange-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200">hard</button>
+            <button id="expert" class="bg-red-100 hover:bg-red-200 text-red-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200">expert</button>
+            <button id="master" class="bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200">master</button>
+        </div>
+        
+        <div class="stats grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="stat-card bg-gray-50 p-4 rounded-lg shadow-sm text-center">
+                <p id="Result" class="text-lg font-semibold text-gray-800"></p>
+                <p id="timer" class="text-2xl font-bold text-indigo-600"></p>
+            </div>
+            <div class="stat-card bg-gray-50 p-4 rounded-lg shadow-sm text-center">
+                <p id="wpmCounter" class="text-2xl font-bold text-indigo-600">Speed: 0 WPM</p>
+                <p id="highScore" class="text-lg font-semibold text-gray-800"></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="type.js" defer></script>
+    <script>
+        // Basic dark mode toggle functionality (your full script will handle the rest)
+        document.getElementById('toggleMode').addEventListener('click', function() {
+            document.body.classList.toggle('dark-mode');
+            document.querySelector('.max-w-3xl').classList.toggle('bg-gray-800');
+        });
+    </script>
 </body>
 </html>
