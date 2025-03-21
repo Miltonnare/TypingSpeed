@@ -8,11 +8,12 @@ const cancelButton = document.getElementById("cancelRead");
 const toggleMode = document.getElementById("toggleMode");
 const highScoreDisplay = document.getElementById("highScore");
 const wpmCounter = document.getElementById("wpmCounter");
+let timerDisplay = document.getElementById("timer");
 
 let starttime, endtime, timer, speech;
 let selectedText = "";
 let countDown = 60;
-let highScore = localStorage.getItem("highWPM") || 0;
+// let highScore = localStorage.getItem("highWPM") || 0;
 
 highScoreDisplay.innerText = `🏆 High Score: ${highScore} WPM`;
 
@@ -84,8 +85,7 @@ function StartTimer() {
     timer = setInterval(() => {
         if (countDown > 0) {
             countDown--;
-            document.getElementById("timer").innerText = `⏳ Time Left: ${countDown}s`;
-            textArea.disabled = false;
+            timerDisplay.innerText = `⏳ Time Left: ${countDown}s`;
         } else {
             clearInterval(timer);
             textArea.disabled = true;
@@ -107,12 +107,19 @@ function calculateWPM(liveUpdate = false) {
 
     result.innerText = `Final Speed: ${speedTyped} WPM`;
 
+    let highScore = parseFloat(localStorage.getItem("highScore")) || 0;
+
     if (speedTyped > highScore) {
-        highScore = speedTyped;
-        localStorage.setItem("highWPM", highScore);
-        highScoreDisplay.innerText = `🏆 High Score: ${highScore} WPM`;
+        localStorage.setItem("highScore", speedTyped);
+        highScoreDisplay.innerText = `🏆 High Score: ${speedTyped} WPM`;
     }
 }
+// Load high score when the page loads
+document.addEventListener("DOMContentLoaded", function () {
+    let storedHighScore = localStorage.getItem("highScore") || 0;
+    document.getElementById("highScore").innerText = `🏆 High Score: ${storedHighScore} WPM`;
+});
+
 
 // Read Aloud Feature
 function readAloud() {
@@ -148,50 +155,67 @@ toggleMode.addEventListener("click", function () {
 const shortButton = document.getElementById("short");
 const mediumButton = document.getElementById("medium");
 const longButton = document.getElementById("long");
-
-
-
-
 const texts = {
-    short: [
-        "Success is not final, failure is not fatal.",
-        "Dream big, work hard.",
-        "The future belongs to those who prepare for it today."
-    ],
-    medium: [
-        "A strong community is built on trust and mutual respect.",
-        "Coding is not just about writing programs; it's about solving problems efficiently.",
-        "Effective communication is key to success in any profession."
-    ],
-    long: [
-        "The greatest glory in living lies not in never falling, but in rising every time we fall.",
-        "Innovation distinguishes between a leader and a follower. Keep challenging yourself to improve.",
-        "Time is the most valuable resource we have. Use it wisely, for it can never be reclaimed."
-    ]
+    amateur: () => generateRandomText(11, 15, ["ear", "near", "real", "inner", "earn", "are", "nine", "alien", "lane", "learn"]),
+    easy: () => generateRandomText(15, 17, ["apple", "table", "chair", "house", "light", "stone", "ocean", "field", "river"]),
+    medium: () => generateRandomText(17, 20, ["garden", "planet", "laptop", "guitar", "breeze", "sprint", "frozen", "voyage", "forest", "silent"]),
+    hard: () => generateRandomText(20, 23, ["mountain", "electric", "journey", "wildlife", "triangle", "enormous", "mystical", "puzzle", "adventure", "horizon"]),
+    expert: () => generateRandomText(20, 23, ["synchronize", "wonderland", "hypothesis", "complexity", "revolution", "dimension", "catastrophe", "phenomenon", "algorithm", "perception"]),
+    master: () => generateRandomText(20, 25, ["interdependent", "professor", "unbelievable", "extraordinary", "misconception", "philosopher", "contradiction", "transcendent", "metamorphosis", "procrastinate", "hallucination"])
 };
 
-// Function to Set Difficulty
+function generateRandomText(minWords, maxWords, wordList) {
+    let text = [];
+    let wordCount = Math.floor(Math.random() * (maxWords - minWords + 1)) + minWords;
+    
+    for (let i = 0; i < wordCount; i++) {
+        text.push(wordList[Math.floor(Math.random() * wordList.length)]);
+    }
+    return text.join(' ');
+}
+
+function getTypingText(level) {
+    return texts[level] ? texts[level]() : "Invalid level";
+}
+
 function setDifficulty(level) {
-    selectedText = texts[level][Math.floor(Math.random() * texts[level].length)];
+    let selectedText = getTypingText(level);
+    if (selectedText === "Invalid level") {
+        console.error(`Error: Invalid level '${level}' selected`);
+        return;
+    }
+    let timerDisplay = document.getElementById("timer");
+
+    if (!display || !textArea || !result || !timerDisplay) {
+        console.error("Error: Required elements not found in the DOM");
+        return;
+    }
+
     display.innerText = selectedText;
     textArea.value = "";
     textArea.disabled = false;
     textArea.focus();
-    result.innerText="";
-    countDown=60;
-    document.getElementById("timer").innerText = `⏳ Time Left: ${countDown}s`;
+    result.innerText = "";
+    
+    let countDown = 60;
+    timerDisplay.innerText = `⏳ Time Left: ${countDown}s`;
     clearInterval(timer);
+    
     starttime = new Date().getTime();
     StartTimer();
 }
+
+// Dark mode checker
 function isDarkModeActive() {
     return document.body.classList.contains("dark-mode");
 }
 
+// Event listeners for difficulty buttons
+["amateur", "easy", "medium", "hard", "expert", "master"].forEach(level => {
+    document.getElementById(level)?.addEventListener("click", () => setDifficulty(level));
+});
+
 // Event Listeners for Difficulty Selection
-shortButton.addEventListener("click", () => setDifficulty("short"));
-mediumButton.addEventListener("click", () => setDifficulty("medium"));
-longButton.addEventListener("click", () => setDifficulty("long"));
 
 const difficultyButtons = document.querySelectorAll(".Difficulties button");
 
@@ -201,3 +225,18 @@ difficultyButtons.forEach(button => {
         button.classList.add("active");
     });
 });
+
+//store highscore in localstorage
+
+document.addEventListener("DOMContentLoaded", function(){
+    let highScore = localStorage.getItem('highScore') || 0;
+    document.getElementById("highScore").innerHTML = `🏆 High Score: ${highScore} WPM`;
+});
+
+function updateHighScore(wpm){
+    let highScore = localStorage.getItem('highScore') || 0;
+    if(wpm>highScore){
+        localStorage.setItem(`highScore, ${wpm}`);
+        document.getElementById("highScore").innerText = `🏆 High Score: ${wpm} WPM`
+    }
+}
