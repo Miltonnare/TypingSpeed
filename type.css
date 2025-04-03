@@ -1,9 +1,58 @@
 .dark-mode {
-    @apply bg-gray-900 text-white;
+    color-scheme: dark;
 }
+
+.display {
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Dark mode specific styles */
+.dark-mode .stat-card {
+    background-color: #374151 !important;
+    color: #f3f4f6 !important;
+}
+
+.dark-mode #display {
+    background-color: #374151 !important;
+    color: #f3f4f6 !important;
+}
+
+.dark-mode #typeHere {
+    background-color: #1f2937 !important;
+    color: #f3f4f6 !important;
+    border-color: #4b5563 !important;
+}
+
 .dark-mode button {
-    @apply bg-gray-700 hover:bg-gray-600 text-white;
+    color: white !important;
 }
-.dark-mode textarea {
-    @apply bg-gray-800 text-white border-gray-700;
+
+.dark-mode #amateur {
+    background-color: #065f46 !important;
+    color: white !important;
+}
+
+.dark-mode #easy {
+    background-color: #1e40af !important;
+    color: white !important;
+}
+
+.dark-mode #medium {
+    background-color: #92400e !important;
+    color: white !important;
+}
+
+.dark-mode #hard {
+    background-color: #9a3412 !important;
+    color: white !important;
+}
+
+.dark-mode #expert {
+    background-color: #991b1b !important;
+    color: white !important;
+}
+
+.dark-mode #master {
+    background-color: #6b21a8 !important;
+    color: white !important;
 }

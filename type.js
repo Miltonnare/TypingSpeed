@@ -1,242 +1,378 @@
-const startButton = document.getElementById("Start");
-const resetButton = document.getElementById("Reset");
-const result = document.getElementById("Result");
-const display = document.getElementById("display");
-const textArea = document.getElementById("typeHere");
-const readButton = document.getElementById("readButton");
-const cancelButton = document.getElementById("cancelRead");
-const toggleMode = document.getElementById("toggleMode");
-const highScoreDisplay = document.getElementById("highScore");
-const wpmCounter = document.getElementById("wpmCounter");
-let timerDisplay = document.getElementById("timer");
-
-let starttime, endtime, timer, speech;
-let selectedText = "";
-let countDown = 60;
-// let highScore = localStorage.getItem("highWPM") || 0;
-
-highScoreDisplay.innerText = `🏆 High Score: ${highScore} WPM`;
-
-const sample = [
-    "A meeting must be held before a project or support is given to a member and the quorum attending the meeting must agree.",
-    "Every amount must be accounted for and every member must be aware of the ongoing projects.",
-    "Special meetings may be called by the Chairperson or by a majority of the Executive Committee."
-];
-
-function StartTest() {
-    selectedText = sample[Math.floor(Math.random() * sample.length)].trim();
-    display.innerText = selectedText;
-    textArea.value = "";
-    textArea.style.color = "black";
-    result.innerText = "";
-    wpmCounter.innerText = "Speed: 0 WPM";
-    countDown = 60;
-    document.getElementById("timer").innerText = `⏳ Time Left: ${countDown}s`;
-    clearInterval(timer);
-    textArea.disabled = false;
-    textArea.focus();
-    starttime = new Date().getTime();
-    StartTimer();
-}
-
-textArea.addEventListener("input", function () {
-    if (!starttime) return;
-
-    const typedText = this.value;
-    const expectedPartialText = selectedText.substring(0, typedText.length);
-
-    // Highlight incorrect text in red
-    if (typedText !== expectedPartialText) {
-        this.style.color = "red";
-    } else {
-        this.style.color = isDarkModeActive() ? "white" : "black"; 
+// DOM Elements
+const elements = {
+    startButton: document.getElementById("Start"),
+    resetButton: document.getElementById("Reset"),
+    result: document.getElementById("Result"),
+    display: document.getElementById("display"),
+    textArea: document.getElementById("typeHere"),
+    readButton: document.getElementById("readButton"),
+    cancelButton: document.getElementById("cancelRead"),
+    toggleMode: document.getElementById("toggleMode"),
+    themeIcon: document.getElementById('themeIcon'),
+    highScoreDisplay: document.getElementById("highScore"),
+    statsDisplay: document.getElementById("statsDisplay"),
+    timerDisplay: document.getElementById("timer"),
+    container: document.querySelector(".max-w-3xl"),
+    difficultyButtons: {
+        amateur: document.getElementById("amateur"),
+        easy: document.getElementById("easy"),
+        medium: document.getElementById("medium"),
+        hard: document.getElementById("hard"),
+        expert: document.getElementById("expert"),
+        master: document.getElementById("master")
     }
-    if (typedText === selectedText) {
-        clearInterval(timer); 
-        textArea.disabled = true; 
-        calculateWPM(false); 
-        result.innerText = "✅ Completed!";
-    }
+};
 
+// Constants
+const INITIAL_TIME = 60;
+const DEFAULT_DIFFICULTY = "easy";
+const WORD_LISTS = {
+    amateur: ["ear", "near", "real", "inner", "earn", "are", "nine", "alien", "lane", "learn"],
+    easy: ["apple", "table", "chair", "house", "light", "stone", "ocean", "field", "river"],
+    medium: ["garden", "planet", "laptop", "guitar", "breeze", "sprint", "frozen", "voyage", "forest", "silent"],
+    hard: ["mountain", "electric", "journey", "wildlife", "triangle", "enormous", "mystical", "puzzle", "adventure", "horizon"],
+    expert: ["synchronize", "wonderland", "hypothesis", "complexity", "revolution", "dimension", "catastrophe", "phenomenon", "algorithm", "perception"],
+    master: ["interdependent", "professor", "unbelievable", "extraordinary", "misconception", "philosopher", "contradiction", "transcendent", "metamorphosis", "procrastinate", "hallucination"]
+};
+
+// State variables
+let state = {
+    startTime: null,
+    endTime: null,
+    timer: null,
+    speech: null,
+    selectedText: "",
+    countDown: INITIAL_TIME,
+    currentDifficulty: DEFAULT_DIFFICULTY,
+    isTestRunning: false,
+    isDarkMode: localStorage.getItem("darkMode") === "true",
+    firstKeyPressed: false,
+    correctCharacters: 0,
+    lastCorrectIndex: -1
+};
+
+// Initialize the application
+function init() {
+    // Set up event listeners
+    elements.startButton.addEventListener("click", startTest);
+    elements.resetButton.addEventListener("click", resetTest);
+    elements.textArea.addEventListener("input", handleInput);
+    elements.readButton.addEventListener("click", readAloud);
+    elements.cancelButton.addEventListener("click", stopReading);
+    elements.toggleMode.addEventListener("click", toggleMode);
+
+    // Set up difficulty buttons
+    Object.keys(elements.difficultyButtons).forEach(level => {
+        if (elements.difficultyButtons[level]) {
+            elements.difficultyButtons[level].addEventListener("click", () => setDifficulty(level));
+        }
+    });
+
+    // Initialize dark mode
+    // applyDarkMode(state.isDarkMode);
     
-
-    // Update live WPM
-    endtime = new Date().getTime();
-    calculateWPM(true);
-});
-
-function ResetTest() {
-    textArea.value = "";
-    display.innerText = "";
-    result.innerText = "";
-    wpmCounter.innerText = "Speed: 0 WPM";
-    textArea.style.color = "black";
-    starttime = null;
-    countDown = 60;
-    document.getElementById("timer").innerText = "";
-    clearInterval(timer);
+    // Load high score
+    updateHighScoreDisplay();
 }
 
-startButton.addEventListener("click", StartTest);
-resetButton.addEventListener("click", ResetTest);
+// Core test functions
+function startTest() {
+    const text = getTypingText(state.currentDifficulty);
+    initializeTest(text);
+}
 
-function StartTimer() {
-    clearInterval(timer);
-    timer = setInterval(() => {
-        if (countDown > 0) {
-            countDown--;
-            timerDisplay.innerText = `⏳ Time Left: ${countDown}s`;
+function initializeTest(text) {
+    state.selectedText = text.trim();
+    state.firstKeyPressed = false;
+    state.startTime = null;
+    state.endTime = null;
+    state.lastCorrectIndex = -1;
+    state.correctCharacters = 0;
+    state.countDown = INITIAL_TIME;
+    state.isTestRunning = true;
+    
+    // Update UI
+    elements.display.textContent = state.selectedText;
+    elements.textArea.value = "";
+    elements.textArea.style.backgroundColor = state.isDarkMode ? "#1f2937" : "white";
+    elements.result.textContent = "";
+    elements.statsDisplay.textContent = "Speed: 0 CPM | 0 WPM | Accuracy: 0%";
+    elements.timerDisplay.textContent = `⏳ Time Left: ${state.countDown}s`;
+
+    //Disable pasting
+    elements.textArea.addEventListener("paste", function(event){
+        event.preventDefault();
+        alert('Buddy just type the fuck out!😂😂');
+        console.log("don\'t do that")
+    })
+    
+    // Clear any existing timer
+    clearInterval(state.timer);
+    
+    // Enable text area and focus
+    elements.textArea.disabled = false;
+    elements.textArea.focus();
+}
+
+function handleInput() {
+    if (!state.isTestRunning) return;
+    
+    const typedText = elements.textArea.value;
+    const displayText = state.selectedText;
+    
+    // Start timer on first valid keystroke
+    if (!state.firstKeyPressed && typedText.length > 0 && typedText[0] === displayText[0]) {
+        state.firstKeyPressed = true;
+        state.startTime = Date.now();
+        startTimer();
+    }
+
+    // Validate each character
+    let newText = "";
+    state.correctCharacters = 0;
+    
+    for (let i = 0; i < typedText.length; i++) {
+        if (i >= displayText.length) break;
+        
+        if (typedText[i] === displayText[i]) {
+            newText += typedText[i];
+            state.correctCharacters++;
+            state.lastCorrectIndex = i;
         } else {
-            clearInterval(timer);
-            textArea.disabled = true;
-            result.innerText = "⏱️ Time's up!";
-            calculateWPM();
+            break;
+        }
+    }
+    
+    // Update textarea with validated text
+    elements.textArea.value = newText;
+    
+    // Visual feedback
+    if (newText.length === displayText.length && newText === displayText) {
+        // Completed successfully
+        elements.textArea.style.backgroundColor = "#69ff33";
+        state.endTime = Date.now();
+        completeTest();
+    } else if (newText.length > 0) {
+        // Partially correct
+        elements.textArea.style.backgroundColor = state.isDarkMode ? "#1f2937" : "white";
+    } else {
+        // Incorrect
+        elements.textArea.style.backgroundColor = "#ff9966";
+    }
+    
+    // Update live stats
+    calculateLiveStats();
+}
+
+function calculateLiveStats() {
+    if (!state.startTime) return;
+    
+    const currentTime = Date.now();
+    const timeElapsed = (currentTime - state.startTime) / 1000; // seconds
+    const cpm = Math.floor((state.correctCharacters / timeElapsed) * 60) || 0;
+    const wpm = Math.floor(cpm / 5);
+    const accuracy = elements.textArea.value.length > 0 
+        ? Math.floor((state.correctCharacters / elements.textArea.value.length) * 100) 
+        : 0;
+    
+    elements.statsDisplay.textContent = `Speed: ${cpm} CPM | ${wpm} WPM | Accuracy: ${accuracy}%`;
+}
+
+function completeTest() {
+    clearInterval(state.timer);
+    elements.textArea.disabled = true;
+    state.isTestRunning = false;
+    
+    const timeTaken = (state.endTime - state.startTime) / 1000; // seconds
+    const cpm = Math.floor((state.selectedText.length / timeTaken) * 60);
+    const wpm = Math.floor(cpm / 5);
+    const accuracy = Math.floor((state.correctCharacters / state.selectedText.length) * 100);
+    
+    elements.result.textContent = `Final: ${cpm} CPM | ${wpm} WPM | ${accuracy}% Accuracy`;
+    updateHighScore(cpm, wpm, accuracy);
+}
+
+function resetTest() {
+    // Reset state
+    state.startTime = null;
+    state.endTime = null;
+    state.selectedText = "";
+    state.countDown = INITIAL_TIME;
+    state.isTestRunning = false;
+    state.firstKeyPressed = false;
+    state.correctCharacters = 0;
+    state.lastCorrectIndex = -1;
+    
+    // Clear timer
+    clearInterval(state.timer);
+    
+    // Reset UI
+    elements.textArea.value = "";
+    elements.display.textContent = "";
+    elements.result.textContent = "";
+    elements.statsDisplay.textContent = "Speed: 0 CPM | 0 WPM | Accuracy: 0%";
+    elements.textArea.style.backgroundColor = state.isDarkMode ? "#1f2937" : "white";
+    elements.timerDisplay.textContent = "⏳ Time Left: 0s";
+}
+
+// Timer functions
+function startTimer() {
+    state.timer = setInterval(() => {
+        state.countDown--;
+        elements.timerDisplay.textContent = `⏳ Time Left: ${state.countDown}s`;
+        
+        if (state.countDown <= 0) {
+            timeExpired();
         }
     }, 1000);
 }
 
-function calculateWPM(liveUpdate = false) {
-    const timeTaken = (new Date().getTime() - starttime) / 1000; // in seconds
-    const wordsTyped = textArea.value.trim().split(/\s+/).length;
-    const speedTyped = (wordsTyped / (timeTaken / 60)).toFixed(2);
+function timeExpired() {
+    clearInterval(state.timer);
+    elements.textArea.disabled = true;
+    elements.result.textContent = "⏱️ Time's up!";
+    state.isTestRunning = false;
+    calculateLiveStats();
+}
 
-    if (liveUpdate) {
-        wpmCounter.innerText = `Speed: ${speedTyped} WPM`;
+// High score management
+function updateHighScore(cpm, wpm, accuracy) {
+    const highScore = JSON.parse(localStorage.getItem("highScore")) || { cpm: 0, wpm: 0, accuracy: 0 };
+    
+    if (cpm > highScore.cpm || (cpm === highScore.cpm && wpm > highScore.wpm)) {
+        const newScore = { cpm, wpm, accuracy };
+        localStorage.setItem("highScore", JSON.stringify(newScore));
+        updateHighScoreDisplay();
+        showToast(`New High Score! 🎉 ${cpm} CPM | ${wpm} WPM | ${accuracy}%`);
+    }
+}
+
+function updateHighScoreDisplay() {
+    const highScore = JSON.parse(localStorage.getItem("highScore")) || { cpm: 0, wpm: 0, accuracy: 0 };
+    elements.highScoreDisplay.textContent = `🏆 High Score: ${highScore.cpm} CPM | ${highScore.wpm} WPM | ${highScore.accuracy}%`;
+}
+
+// Difficulty management
+function setDifficulty(level) {
+    if (!WORD_LISTS[level]) {
+        console.error(`Invalid difficulty level: ${level}`);
         return;
     }
-
-    result.innerText = `Final Speed: ${speedTyped} WPM`;
-
-    let highScore = parseFloat(localStorage.getItem("highScore")) || 0;
-
-    if (speedTyped > highScore) {
-        localStorage.setItem("highScore", speedTyped);
-        highScoreDisplay.innerText = `🏆 High Score: ${speedTyped} WPM`;
+    
+    state.currentDifficulty = level;
+    
+    // If test is running, restart with new difficulty
+    if (state.isTestRunning) {
+        startTest();
     }
 }
-// Load high score when the page loads
-document.addEventListener("DOMContentLoaded", function () {
-    let storedHighScore = localStorage.getItem("highScore") || 0;
-    document.getElementById("highScore").innerText = `🏆 High Score: ${storedHighScore} WPM`;
-});
 
-
-// Read Aloud Feature
-function readAloud() {
-    if (!selectedText) {
-        alert("⚠️ No text available to read!");
-        return;
+function getTypingText(level) {
+    if (level === "easy") {
+        const sampleSentences = [
+            "A meeting must be held before a project or support is given to a member and the quorum attending the meeting must agree.",
+            "Every amount must be accounted for and every member must be aware of the ongoing projects.",
+            "Special meetings may be called by the Chairperson or by a majority of the Executive Committee."
+        ];
+        return sampleSentences[Math.floor(Math.random() * sampleSentences.length)];
     }
-
-    stopReading(); // Stop any ongoing speech before starting a new one
-
-    speech = new SpeechSynthesisUtterance(selectedText);
-    speech.lang = "en-US";
-    speech.rate = 1;
-    speech.pitch = 1;
-    speech.volume = 1;
-
-    speechSynthesis.speak(speech);
+    
+    const minWords = level === "amateur" ? 10 : 15;
+    const maxWords = level === "master" ? 25 : 20;
+    return generateRandomText(minWords, maxWords, WORD_LISTS[level]);
 }
-
-function stopReading() {
-    speechSynthesis.cancel();
-}
-
-readButton.addEventListener("click", readAloud);
-cancelButton.addEventListener("click", stopReading);
-
-// Dark Mode Toggle
-toggleMode.addEventListener("click", function () {
-    document.body.classList.toggle("dark-mode");
-
-});
-
-const shortButton = document.getElementById("short");
-const mediumButton = document.getElementById("medium");
-const longButton = document.getElementById("long");
-const texts = {
-    amateur: () => generateRandomText(11, 15, ["ear", "near", "real", "inner", "earn", "are", "nine", "alien", "lane", "learn"]),
-    easy: () => generateRandomText(15, 17, ["apple", "table", "chair", "house", "light", "stone", "ocean", "field", "river"]),
-    medium: () => generateRandomText(17, 20, ["garden", "planet", "laptop", "guitar", "breeze", "sprint", "frozen", "voyage", "forest", "silent"]),
-    hard: () => generateRandomText(20, 23, ["mountain", "electric", "journey", "wildlife", "triangle", "enormous", "mystical", "puzzle", "adventure", "horizon"]),
-    expert: () => generateRandomText(20, 23, ["synchronize", "wonderland", "hypothesis", "complexity", "revolution", "dimension", "catastrophe", "phenomenon", "algorithm", "perception"]),
-    master: () => generateRandomText(20, 25, ["interdependent", "professor", "unbelievable", "extraordinary", "misconception", "philosopher", "contradiction", "transcendent", "metamorphosis", "procrastinate", "hallucination"])
-};
 
 function generateRandomText(minWords, maxWords, wordList) {
+    const wordCount = Math.floor(Math.random() * (maxWords - minWords + 1)) + minWords;
     let text = [];
-    let wordCount = Math.floor(Math.random() * (maxWords - minWords + 1)) + minWords;
     
     for (let i = 0; i < wordCount; i++) {
         text.push(wordList[Math.floor(Math.random() * wordList.length)]);
     }
+    
     return text.join(' ');
 }
 
-function getTypingText(level) {
-    return texts[level] ? texts[level]() : "Invalid level";
-}
-
-function setDifficulty(level) {
-    let selectedText = getTypingText(level);
-    if (selectedText === "Invalid level") {
-        console.error(`Error: Invalid level '${level}' selected`);
+// Text-to-speech functions
+function readAloud() {
+    if (!state.selectedText) {
+        showToast("No text to read!", "error");
         return;
     }
-    let timerDisplay = document.getElementById("timer");
-
-    if (!display || !textArea || !result || !timerDisplay) {
-        console.error("Error: Required elements not found in the DOM");
-        return;
-    }
-
-    display.innerText = selectedText;
-    textArea.value = "";
-    textArea.disabled = false;
-    textArea.focus();
-    result.innerText = "";
     
-    let countDown = 60;
-    timerDisplay.innerText = `⏳ Time Left: ${countDown}s`;
-    clearInterval(timer);
-    
-    starttime = new Date().getTime();
-    StartTimer();
+    stopReading();
+    state.speech = new SpeechSynthesisUtterance(state.selectedText);
+    state.speech.lang = "en-US";
+    window.speechSynthesis.speak(state.speech);
 }
 
-// Dark mode checker
-function isDarkModeActive() {
-    return document.body.classList.contains("dark-mode");
-}
-
-// Event listeners for difficulty buttons
-["amateur", "easy", "medium", "hard", "expert", "master"].forEach(level => {
-    document.getElementById(level)?.addEventListener("click", () => setDifficulty(level));
-});
-
-// Event Listeners for Difficulty Selection
-
-const difficultyButtons = document.querySelectorAll(".Difficulties button");
-
-difficultyButtons.forEach(button => {
-    button.addEventListener("click", () => {
-        difficultyButtons.forEach(btn => btn.classList.remove("active"));
-        button.classList.add("active");
-    });
-});
-
-//store highscore in localstorage
-
-document.addEventListener("DOMContentLoaded", function(){
-    let highScore = localStorage.getItem('highScore') || 0;
-    document.getElementById("highScore").innerHTML = `🏆 High Score: ${highScore} WPM`;
-});
-
-function updateHighScore(wpm){
-    let highScore = localStorage.getItem('highScore') || 0;
-    if(wpm>highScore){
-        localStorage.setItem(`highScore, ${wpm}`);
-        document.getElementById("highScore").innerText = `🏆 High Score: ${wpm} WPM`
+function stopReading() {
+    if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
     }
 }
+
+// Dark mode functions
+function updateTheme() {
+    if (state.isDarkMode) {
+      document.body.classList.add("dark-mode");
+      document.body.classList.remove("bg-gradient-to-b", "from-blue-50", "to-indigo-100");
+      document.body.classList.add("bg-gray-900");
+
+      elements.container?.classList.add("bg-gray-800", "text-white");
+      elements.container?.classList.remove("bg-white");
+    } else {
+      document.body.classList.remove("dark-mode");
+      document.body.classList.add("bg-gradient-to-b", "from-blue-50", "to-indigo-100");
+      document.body.classList.remove("bg-gray-900");
+
+      elements.container?.classList.remove("bg-gray-800", "text-white");
+      elements.container?.classList.add("bg-white");
+    }
+
+    // Update text area colors if not showing error/success
+    if (elements.textArea && 
+        elements.textArea.style.backgroundColor !== "#69ff33" && 
+        elements.textArea.style.backgroundColor !== "#ff9966") {
+      elements.textArea.style.backgroundColor = state.isDarkMode ? "#1f2937" : "white";
+    }
+    
+    if (elements.textArea) {
+      elements.textArea.style.color = state.isDarkMode ? "white" : "black";
+    }
+
+    // Update theme icon
+    elements.themeIcon.src = state.isDarkMode ? "assets/moon.svg" : "assets/sun.svg";
+    elements.themeIcon.alt = state.isDarkMode ? "Dark Mode" : "Light Mode";
+  }
+
+  // Set initial state on page load
+  updateTheme();
+
+elements.toggleMode.addEventListener("click", function(){
+    state.isDarkMode = !state.isDarkMode;
+    localStorage.setItem("darkMode", state.isDarkMode);
+    updateTheme(state.isDarkMode);
+})
+
+// UI functions
+function showToast(message, type = "success") {
+    Toastify({
+        text: message,
+        duration: 2000,
+        backgroundColor: type === "error" ? "#ff3333" : "#4CAF50",
+        close: true,
+        gravity: "bottom",
+        position: "right"
+    }).showToast();
+}
+
+// Initialize the app when DOM is loaded
+document.addEventListener("DOMContentLoaded", () => {
+    // Initialize high score storage if not exists
+    if (!localStorage.getItem("highScore")) {
+        localStorage.setItem("highScore", JSON.stringify({ cpm: 0, wpm: 0, accuracy: 0 }));
+    }
+    
+    init();
+});
